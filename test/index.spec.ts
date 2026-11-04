@@ -88,7 +88,9 @@ describe("GET /health", () => {
 	it("returns ok without auth", async () => {
 		const res = await call(`/health`);
 		expect(res.status).toBe(200);
-		expect(await res.json()).toEqual({ ok: true });
+		const body = (await res.json()) as { ok: boolean; build: string };
+		expect(body.ok).toBe(true);
+		expect(body.build).toBeTruthy();
 	});
 });
 

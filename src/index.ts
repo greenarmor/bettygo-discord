@@ -23,7 +23,9 @@ app.use("*", async (c, next) => {
   })(c, next);
 });
 
-app.get("/health", (c) => c.json({ ok: true }));
+const BUILD_ID = "2026-11-04-callback-guard";
+
+app.get("/health", (c) => c.json({ ok: true, build: BUILD_ID }));
 
 // /auth/login is protected; /auth/callback is public (browser redirect from Discord)
 app.use("/auth/login", apiKey);

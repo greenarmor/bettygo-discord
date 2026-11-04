@@ -53,6 +53,7 @@ auth.get("/callback", async (c) => {
   const fail = (reason: string, redirectBase = defaultRedirectBase) =>
     c.redirect(`${redirectBase}?error=${encodeURIComponent(reason)}`);
 
+  let stage = "state";
   try {
     const code = c.req.query("code");
     const state = c.req.query("state");
@@ -67,6 +68,7 @@ auth.get("/callback", async (c) => {
     const { userId, redirectUri } = payload;
     const redirectBase = redirectUri ?? defaultRedirectBase;
 
+    stage = "token_exchange";
     let accessToken: string;
     try {
       const token = await exchangeCode(
@@ -81,6 +83,7 @@ auth.get("/callback", async (c) => {
       return fail("token_exchange_failed", redirectBase);
     }
 
+    stage = "user_fetch";
     let user: Awaited<ReturnType<typeof getUser>>;
     try {
       user = await getUser(accessToken);
@@ -89,6 +92,7 @@ auth.get("/callback", async (c) => {
       return fail("user_fetch_failed", redirectBase);
     }
 
+    stage = "sign";
     const params = new URLSearchParams({
       user_id: userId,
       discord_id: user.id,
@@ -100,10 +104,14 @@ auth.get("/callback", async (c) => {
     const ts = Date.now().toString();
     params.set("ts", ts);
     params.set("sig", await signResult(c.env.API_SECRET, `${ts}.${userId}.${user.id}.${user.username}`));
+
+    stage = "redirect";
     return c.redirect(`${redirectBase}?${params}`);
   } catch (err) {
-    console.error("auth_callback_failed", err);
-    return fail("server_error");
+    console.error("auth_callback_failed", stage, err);
+    return c.redirect(
+      `${defaultRedirectBase}?error=server_error&stage=${encodeURIComponent(stage)}`,
+    );
   }
 });
 
